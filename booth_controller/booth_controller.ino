@@ -28,8 +28,13 @@ char triggerState = LOW;
 // countdown and I2C send
 boolean systemArmed = false;
 
+// captures the state of trigger button. If false, prevents a button push
+// from triggering a countdown. Should be set to true when the system becomes
+// armed and then to false again the first time the button is pushed.
+boolean triggerReady = false;
+
 // countdown timer = 5 seconds
-const unsigned long interval = 5000;
+const long interval = 5000;
 
 void setup() {
   // start I2C slave
@@ -43,7 +48,7 @@ void setup() {
   * temporary - setup and test lcd
   */
   lcd.begin(16, 2);
-  lcd.print("Online");
+  printStatus();
   
   /*
   * temporary
@@ -67,9 +72,9 @@ void loop() {
   }
   
   triggerState = digitalRead(triggerPin);
-  if (triggerState == HIGH && systemArmed) {
-    systemArmed = false;
+  if (triggerState == HIGH && systemArmed && triggerReady) {
     digitalWrite(armedPin, LOW);
+    triggerReady = false;
     countdown();
   }
 }
@@ -77,29 +82,55 @@ void loop() {
 void receiveData(int numBytes) {
   if (!systemArmed) {
     systemArmed = true;
+    triggerReady = true;
     digitalWrite(armedPin, HIGH);
+    
     /*
     * temporary
     */
-    lcd.setCursor(0,0);
-    lcd.print("System armed");
+    printStatus();
   }
 }
 
 void sendData() {
+  systemArmed = false;
   
+  /*
+  * temporary
+  */
+  printStatus();
 }
 
 // nonblocking countdown timer
 void countdown() {
+  /*
+  * temporary
+  */
+  lcd.clear();
+  
   long curr = millis();
   long delta = millis() - curr;
-  while (interval - delta >= 0) {
+  while ((interval - delta) >= 0) {
     /*
     * temporary
     */
-    lcd.setCursor(0,0);
-    lcd.print((interval - delta) / 1000);
+    lcd.setCursor(0, 0);
+    lcd.print((((interval - delta)) / 1000) + 1);
+    
+    delta = millis() - curr;
   }
+  sendData();
+}
+
+/*
+* temporay - print system state to lcd display
+*/
+void printStatus() {
+  lcd.setCursor(0,0);
+  lcd.print("System armed:  ");
+  lcd.print(systemArmed);
+  lcd.setCursor(0,1);
+  lcd.print("Trigger ready: ");
+  lcd.print(triggerReady);
 }
 
