@@ -75,6 +75,12 @@ void loop() {
   if (triggerState == HIGH && systemArmed && triggerReady) {
     digitalWrite(armedPin, LOW);
     triggerReady = false;
+    
+    /*
+    * temporary
+    */
+    printStatus();
+    
     countdown();
   }
 }
@@ -103,22 +109,24 @@ void sendData() {
 
 // nonblocking countdown timer
 void countdown() {
-  /*
-  * temporary
-  */
-  lcd.clear();
-  
   long curr = millis();
   long delta = millis() - curr;
   while ((interval - delta) >= 0) {
     /*
     * temporary
     */
-    lcd.setCursor(0, 0);
+    lcd.setCursor(15, 0);
     lcd.print((((interval - delta)) / 1000) + 1);
     
     delta = millis() - curr;
   }
+  
+  /*
+  * temporary
+  */
+  lcd.setCursor(15, 0);
+  lcd.print(" ");
+  
   sendData();
 }
 
@@ -126,11 +134,11 @@ void countdown() {
 * temporay - print system state to lcd display
 */
 void printStatus() {
-  lcd.setCursor(0,0);
-  lcd.print("System armed:  ");
+  lcd.setCursor(0, 0);
+  lcd.print("Sys. armed:  ");
   lcd.print(systemArmed);
-  lcd.setCursor(0,1);
-  lcd.print("Trigger ready: ");
+  lcd.setCursor(0, 1);
+  lcd.print("Trig. ready: ");
   lcd.print(triggerReady);
 }
 
