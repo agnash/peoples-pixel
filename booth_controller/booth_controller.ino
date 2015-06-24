@@ -68,7 +68,8 @@ void loop() {
   */
   armingButtonState = digitalRead(armingPin);
   if (armingButtonState == HIGH) {
-    receiveData(1);
+    //receiveData(1);
+    armForCountdown();
   }
   
   triggerState = digitalRead(triggerPin);
@@ -86,15 +87,20 @@ void loop() {
 }
 
 void receiveData(int numBytes) {
-  if (!systemArmed) {
-    systemArmed = true;
-    triggerReady = true;
-    digitalWrite(armedPin, HIGH);
-    
-    /*
-    * temporary
-    */
-    printStatus();
+  while (Wire.available()) {
+    // capture the data and decide which command it represents
+    int code = Wire.read();
+    switch (code) {
+      case 1:
+        armForCountdown();
+      default:
+        /*
+        * temporary
+        */
+        lcd.clear();
+        lcd.print("Unrecognized cmd");
+        delay(5000);
+    }
   }
 }
 
@@ -105,6 +111,19 @@ void sendData() {
   * temporary
   */
   printStatus();
+}
+
+void armForCountdown() {
+  if (!systemArmed) {
+    systemArmed = true;
+    triggerReady = true;
+    digitalWrite(armedPin, HIGH);
+    
+    /*
+    * temporary
+    */
+    printStatus();
+  }
 }
 
 // nonblocking countdown timer
