@@ -13,3 +13,12 @@ def writeCode(value):
 def readCode():
     number = bus.read_byte(address)
     return number
+
+while True:
+    cmd = ''
+    while (type(cmd) is int) = False:
+        cmd = input("Enter a number 1-9: ")
+
+    print "Sending the Arduino the number", cmd
+
+    writeCode(cmd)
