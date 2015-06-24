@@ -4,7 +4,7 @@ import smbus
 bus = smbus.SMBus(1)
 
 # specify the same address as used for the Arduino Uno slave
-address = 0x02
+address = 0x04
 
 def writeCode(value):
     bus.write_byte(address, value)
