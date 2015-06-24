@@ -36,6 +36,9 @@ boolean triggerReady = false;
 // countdown timer = 5 seconds
 const long interval = 5000;
 
+// contains the last data received over the i2c bus
+int code;
+
 void setup() {
   // start I2C slave
   Wire.begin(SLAVE_ADDRESS);
@@ -89,7 +92,7 @@ void loop() {
 void receiveData(int numBytes) {
   while (Wire.available()) {
     // capture the data and decide which command it represents
-    int code = Wire.read();
+    code = Wire.read();
     switch (code) {
       case 1:
         armForCountdown();
