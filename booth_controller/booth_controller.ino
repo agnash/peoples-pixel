@@ -5,8 +5,8 @@
 */
 #include <LiquidCrystal.h>
 
-// after bit shifting will be converted to I2C slave address 8
-#define SLAVE_ADDRESS 0x02
+// after bit shifting will be converted to I2C slave address 16
+#define SLAVE_ADDRESS 0x04
 
 /*
 * temporary - initialize lcd object and set I2C simulating arming button 
