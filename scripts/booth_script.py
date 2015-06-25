@@ -24,7 +24,6 @@ while True:
 
     while True:
         ready = readCode()
-	print ready
 	if ready == 1:
 	    break
 
