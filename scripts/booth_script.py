@@ -1,4 +1,4 @@
-import smbus
+import time, smbus
 
 # create i2c bus object on i2c port 1
 bus = smbus.SMBus(1)
@@ -15,10 +15,35 @@ def readCode():
     return number
 
 while True:
-    cmd = ''
-    while (type(cmd) is int) = False:
-        cmd = input("Enter a number 1-9: ")
 
-    print "Sending the Arduino the number", cmd
+    print "Arming the Arduino."
 
-    writeCode(cmd)
+    writeCode(1)
+
+    time.sleep(.1)
+
+    while True:
+        ready = readCode()
+	print ready
+	if ready == 1:
+	    break
+
+    print "Taking picture!"
+
+    print "Disarming..."
+
+    writeCode(2)
+
+    time.sleep(.1)
+
+    while True:
+        ready = readCode()
+	if ready == 2:
+	    break
+
+    print "Arduino disarmed."
+
+    print "Arming again in 5 seconds..."
+
+    time.sleep(5)
+
