@@ -36,8 +36,9 @@ boolean triggerReady = false;
 // countdown timer = 5 seconds
 const long interval = 5000;
 
-// contains the last data received over the i2c bus
-int code;
+// contains the last data received or sent over the i2c bus
+int inCode;
+int outCode;
 
 void setup() {
   // start I2C slave
@@ -53,11 +54,6 @@ void setup() {
   lcd.begin(16, 2);
   printStatus();
   
-  /*
-  * temporary
-  */
-  pinMode(armingPin, INPUT);
-  
   // set the armedPin to OUTPUT
   pinMode(armedPin, OUTPUT);
   
@@ -66,14 +62,6 @@ void setup() {
 }
 
 void loop() {
-  /*
-  * temporary - use a button to simulate receiving an arming message over I2C
-  */
-  armingButtonState = digitalRead(armingPin);
-  if (armingButtonState == HIGH) {
-    //receiveData(1);
-    armForCountdown();
-  }
   
   triggerState = digitalRead(triggerPin);
   if (triggerState == HIGH && systemArmed && triggerReady) {
@@ -92,31 +80,30 @@ void loop() {
 void receiveData(int numBytes) {
   while (Wire.available()) {
     // capture the data and decide which command it represents
-    code = Wire.read();
-    switch (code) {
+    inCode = Wire.read();
+    switch (inCode) {
       case 1:
-        armForCountdown();
+        armBeforeCountdown();
+        break;
+      case 2:
+        disarmAfterCountdown();
+        break;
       default:
         /*
         * temporary
         */
         lcd.clear();
         lcd.print("Unrecognized cmd");
-        delay(5000);
     }
   }
 }
 
 void sendData() {
-  systemArmed = false;
-  
-  /*
-  * temporary
-  */
-  printStatus();
+  // send the outgoing code
+  Wire.write(outCode);
 }
 
-void armForCountdown() {
+void armBeforeCountdown() {
   if (!systemArmed) {
     systemArmed = true;
     triggerReady = true;
@@ -127,6 +114,17 @@ void armForCountdown() {
     */
     printStatus();
   }
+}
+
+void disarmAfterCountdown() {
+  systemArmed = false;
+  
+  /*
+  * temporary
+  */
+  printStatus();
+  
+  outCode = 2;
 }
 
 // nonblocking countdown timer
@@ -149,14 +147,14 @@ void countdown() {
   lcd.setCursor(15, 0);
   lcd.print(" ");
   
-  sendData();
+  outCode = 1;
 }
 
 /*
 * temporay - print system state to lcd display
 */
 void printStatus() {
-  lcd.setCursor(0, 0);
+  lcd.clear();
   lcd.print("Sys. armed:  ");
   lcd.print(systemArmed);
   lcd.setCursor(0, 1);
