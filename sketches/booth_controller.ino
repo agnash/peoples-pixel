@@ -1,11 +1,11 @@
 #include <Wire.h>
 
 /*
-* temporary - will replace with approriate libaries 7-segment display
+* temporary - will replace with approriate libaries for 7-segment display
 */
 #include <LiquidCrystal.h>
 
-// after bit shifting will be converted to I2C slave address 16
+// after bit shifting will be converted to I2C slave address 8
 #define SLAVE_ADDRESS 0x04
 
 /*
