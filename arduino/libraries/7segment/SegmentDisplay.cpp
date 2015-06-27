@@ -1,12 +1,12 @@
 #include "Arduino.h"
 #include "7segment.h"
 
-7segment::7segment()
+SegmentDisplay::SegmentDisplay()
 {
   buildTable();
 }
 
-7segment::7segment(
+SegmentDisplay::SegmentDisplay(
   const byte& pin1,
   const byte& pin2,
   const byte& pin3,
@@ -14,17 +14,17 @@
   const byte& pin5,
   const byte& pin6,
   const byte& pin7,
-  const byte& pin8
+  const byte& pin8)
 {
   initialize(pin1, pin2, pin3, pin4, pin5, pin6, pin7, pin8);
   buildTable();
 }
 
-7segment::~7segment()
+SegmentDisplay::~SegmentDisplay()
 {
 }
 
-void 7segment::initialize(
+void SegmentDisplay::initialize(
   const byte& pin1,
   const byte& pin2,
   const byte& pin3,
@@ -32,7 +32,7 @@ void 7segment::initialize(
   const byte& pin5,
   const byte& pin6,
   const byte& pin7,
-  const byte& pin8
+  const byte& pin8)
 {
   // prefill the table with error codes
   for (int i = 0; i < PINS; i++) {
@@ -49,7 +49,7 @@ void 7segment::initialize(
   PinMap[seg.B] = pin8;
 }
 
-int 7segment::print(const byte& number) const
+int SegmentDisplay::print(const byte& number) const
 {
   if (number < 0 || number > 9) {
     illuminate(ERROR);
@@ -59,7 +59,7 @@ int 7segment::print(const byte& number) const
   return number;
 }
 
-void 7segment::illuminate(const byte& number) const
+void SegmentDisplay::illuminate(const byte& number) const
 {
   Node* ptr = table[number];
   clear();
@@ -69,7 +69,7 @@ void 7segment::illuminate(const byte& number) const
   }
 }
 
-void 7segment::clear() const
+void SegmentDisplay::clear() const
 {
   digitalWrite(PinMap[seg.E], LOW);
   digitalWrite(PinMap[seg.D], LOW);
@@ -81,7 +81,7 @@ void 7segment::clear() const
   digitalWrite(PinMap[seg.B], LOW);
 }
 
-void 7segment::7segment buildTable()
+void SegmentDisplay::buildTable()
 {
   table[0] = Node(seg.A, Node(seg.B, Node(seg.C, Node(seg.D, Node(seg.E, Node(seg.F))))));
   table[1] = Node(seg.B, Node(seg.C));

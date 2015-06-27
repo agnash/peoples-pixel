@@ -1,5 +1,5 @@
-#ifndef 7segment_h
-#define 7segment_h
+#ifndef SegmentDisplay_h
+#define SegmentDisplay_h
 
 #include "Arduino.h"
 
@@ -8,13 +8,13 @@ const byte PINS = 10;
 const byte DOT = 10;
 const byte ERROR = 11;
 
-class 7segment {
+class SegmentDisplay {
 public:
   // CONSTRUCTORS
   // default constructor
-  7segment();
+  SegmentDisplay();
   // constructor - only supports common cathode part nos. 18011Ax at the moment
-  7segment(
+  SegmentDisplay(
     const byte& pin1,
     const byte& pin2,
     const byte& pin3,
@@ -26,7 +26,7 @@ public:
   );
 
   // DESTRUCTOR
-  ~7segment();
+  ~SegmentDisplay();
 
   // PUBLIC MEMBER FUNCTIONS
   // for manually initializing an existing 7segment instance
