@@ -1,3 +1,4 @@
+#include <SegmentDisplay.h>
 #include <Wire.h>
 
 /*
