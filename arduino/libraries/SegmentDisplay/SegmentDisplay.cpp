@@ -1,5 +1,5 @@
 #include "Arduino.h"
-#include "7segment.h"
+#include "SegmentDisplay.h"
 
 SegmentDisplay::SegmentDisplay()
 {
@@ -34,19 +34,24 @@ void SegmentDisplay::initialize(
   const byte& pin7,
   const byte& pin8)
 {
-  // prefill the table with error codes
-  for (int i = 0; i < PINS; i++) {
-    PinMap[i] = -1;
-  }
+  // set pin modes
+  pinMode(pin1, OUTPUT);
+  pinMode(pin2, OUTPUT);
+  pinMode(pin3, OUTPUT);
+  pinMode(pin4, OUTPUT);
+  pinMode(pin5, OUTPUT);
+  pinMode(pin6, OUTPUT);
+  pinMode(pin7, OUTPUT);
+  pinMode(pin8, OUTPUT);
   // map the segments to the appropriate digital pins
-  PinMap[seg.E] = pin1;
-  PinMap[seg.D] = pin2;
-  PinMap[seg.C] = pin3;
-  PinMap[seg.G] = pin4;
-  PinMap[seg.F] = pin5;
-  PinMap[seg.DP] = pin6;
-  PinMap[seg.A] = pin7;
-  PinMap[seg.B] = pin8;
+  pinMap[E] = pin1;
+  pinMap[D] = pin2;
+  pinMap[C] = pin3;
+  pinMap[G] = pin4;
+  pinMap[F] = pin5;
+  pinMap[DP] = pin6;
+  pinMap[A] = pin7;
+  pinMap[B] = pin8;
 }
 
 int SegmentDisplay::print(const byte& number) const
@@ -61,38 +66,41 @@ int SegmentDisplay::print(const byte& number) const
 
 void SegmentDisplay::illuminate(const byte& number) const
 {
-  Node* ptr = table[number];
   clear();
-  while (ptr.nextNode != NULL) {
-    digitalWrite(PinMap[ptr.segment], HIGH);
-    ptr = ptr.nextNode;
+  byte index = 0;
+  byte curr = alphabet[number][index];
+  while (curr != 0) {
+    digitalWrite(pinMap[curr], HIGH);
+    index++;
+    curr = alphabet[number][index];
   }
 }
 
 void SegmentDisplay::clear() const
 {
-  digitalWrite(PinMap[seg.E], LOW);
-  digitalWrite(PinMap[seg.D], LOW);
-  digitalWrite(PinMap[seg.C], LOW);
-  digitalWrite(PinMap[seg.G], LOW);
-  digitalWrite(PinMap[seg.F], LOW);
-  digitalWrite(PinMap[seg.DP], LOW);
-  digitalWrite(PinMap[seg.A], LOW);
-  digitalWrite(PinMap[seg.B], LOW);
+  digitalWrite(pinMap[E], LOW);
+  digitalWrite(pinMap[D], LOW);
+  digitalWrite(pinMap[C], LOW);
+  digitalWrite(pinMap[G], LOW);
+  digitalWrite(pinMap[F], LOW);
+  digitalWrite(pinMap[DP], LOW);
+  digitalWrite(pinMap[A], LOW);
+  digitalWrite(pinMap[B], LOW);
 }
 
 void SegmentDisplay::buildTable()
 {
-  table[0] = Node(seg.A, Node(seg.B, Node(seg.C, Node(seg.D, Node(seg.E, Node(seg.F))))));
-  table[1] = Node(seg.B, Node(seg.C));
-  table[2] = Node(seg.A, Node(seg.B, Node(seg.G, Node(seg.E, Node(seg.D)))));
-  table[3] = Node(seg.A, Node(seg.B, Node(seg.G, Node(seg.C, Node(seg.D)))));
-  table[4] = Node(seg.F, Node(seg.G, Node(seg.B, Node(seg.C))));
-  table[5] = Node(seg.A, Node(seg.F, Node(seg.G, Node(seg.C, Node(seg.D)))));
-  table[6] = Node(seg.A, Node(seg.F, Node(seg.G, Node(seg.C, Node(seg.D, Node(seg.E))))));
-  table[7] = Node(seg.A, Node(seg.B, Node(seg.C)));
-  table[8] = Node(seg.A, Node(seg.B, Node(seg.C, Node(seg.D, Node(seg.E, Node(seg.F, Node(seg.G)))))));
-  table[9] = Node(seg.A, Node(seg.B, Node(seg.C, Node(seg.F, Node(seg.G)))));
-  table[10] = Node(seg.DP);
-  table[11] = Node(seg.A, Node(seg.D, Node(seg.E, Node(seg.F, Node(seg.G)))));
+  // assignment of character definitions to alphabet table
+  alphabet[0] = zero;
+  alphabet[1] = one;
+  alphabet[2] = two;
+  alphabet[3] = three;
+  alphabet[4] = four;
+  alphabet[5] = five;
+  alphabet[6] = six;
+  alphabet[7] = seven;
+  alphabet[8] = eight;
+  alphabet[9] = nine;
+  alphabet[DOT] = dot;
+  alphabet[ERROR] = error;
 }

@@ -1,5 +1,5 @@
-#include <SegmentDisplay.h>
 #include <Wire.h>
+#include <SegmentDisplay.h>
 
 /*
 * temporary - will replace with approriate libaries for 7-segment display
@@ -10,12 +10,14 @@
 #define SLAVE_ADDRESS 0x04
 
 /*
-* temporary - initialize lcd object and set I2C simulating arming button 
+* temporary - initialize lcd object and set I2C simulating arming button
 * pin/state
 */
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 const char armingPin = 6;
 char armingButtonState = LOW;
+
+SegmentDisplay segmentDisplay;
 
 // armed indicator led pin
 const char armedPin = 8;
@@ -55,6 +57,9 @@ void setup() {
   lcd.begin(16, 2);
   printStatus();
   
+  // setup the common cathode segment display
+  segmentDisplay.initialize(10, 9, 6, 17, 16, 15, 14, 0);
+
   // set the armedPin to OUTPUT
   pinMode(armedPin, OUTPUT);
   
@@ -136,8 +141,10 @@ void countdown() {
     /*
     * temporary
     */
-    lcd.setCursor(15, 0);
-    lcd.print((((interval - delta)) / 1000) + 1);
+    //lcd.setCursor(15, 0);
+    //lcd.print((((interval - delta)) / 1000) + 1);
+    
+    segmentDisplay.print((((interval - delta)) / 1000) + 1);
     
     delta = millis() - curr;
   }
@@ -145,8 +152,10 @@ void countdown() {
   /*
   * temporary
   */
-  lcd.setCursor(15, 0);
-  lcd.print(" ");
+  //lcd.setCursor(15, 0);
+  //lcd.print(" ");
+  
+  segmentDisplay.clear();
   
   outCode = 1;
 }

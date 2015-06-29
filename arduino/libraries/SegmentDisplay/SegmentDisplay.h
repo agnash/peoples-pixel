@@ -3,8 +3,8 @@
 
 #include "Arduino.h"
 
-const byte DIGITS = 12;
-const byte PINS = 10;
+const byte MAX_DIGITS = 12;
+const byte MAX_PINS = 10;
 const byte DOT = 10;
 const byte ERROR = 11;
 
@@ -46,7 +46,6 @@ public:
   void clear() const;
 
 private:
-
   // PRIVATE MEMBER FUNCTIONS
   // creates the character table
   void buildTable();
@@ -56,25 +55,27 @@ private:
   // PRIVATE FIELDS
   // matches a particular LED segment to a particular annode
   // (for now requires 7-segment common cathode part nos. 18011Ax)
-  enum seg: byte {E=2, D=3, C=4, G=6, F=7, DP=8, A=9, B=10}
+  enum seg: byte {E=2, D=3, C=4, G=6, F=7, DP=8, A=9, B=10};
+  // seg field
+  seg segments;
   // maps the provided digital Arduino pins to the data pins of the specified
   // display
-  int PinMap[PINS];
-  // a digit/character is represented as a linked list of annodes stored in a
-  // hash table
-  struct Node {
-    // the annode pin nos.
-    int segment;
-    // pointer to next annode
-    Node* nextNode;
-    // constructor
-    Node(const int& segment, nextNode = NULL) {
-      this.segment = segment;
-      this.nextNode = nextNode;
-    }
-  }
-  // table of Node lists
-  Node* table[DIGITS];
+  byte pinMap[MAX_PINS + 1] = {};
+  // table of character combinations
+  byte* alphabet[MAX_DIGITS];
+  // individual character combinations
+  byte zero[7] = {A, B, C, D, E, F, 0};
+  byte one[3] = {B, C, 0};
+  byte two[6] = {A, B, D, E, G, 0};
+  byte three[6] = {A, B, C, D, G, 0};
+  byte four[5] = {B, C, F, G, 0};
+  byte five[6] = {A, C, D, F, G, 0};
+  byte six[7] = {A, C, D, E, F, G, 0};
+  byte seven[4] = {A, B, C, 0};
+  byte eight[8] = {A, B, C, D, E, F, G, 0};
+  byte nine[6] = {A, B, C, F, G, 0};
+  byte dot[2] = {DP, 0};
+  byte error[6] = {A, D, E, F, G, 0};
 };
 
 #endif
