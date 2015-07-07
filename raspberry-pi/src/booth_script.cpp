@@ -8,6 +8,7 @@
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <gphoto2/gphoto2-camera.h>
 
 using namespace std;
 
@@ -29,13 +30,13 @@ int main() {
 	// try to open i2c device 
 	if ((file = open(DEVICE, O_RDWR)) < 0) {
 		cout << "Failed to open i2c device" << endl;
-		return -1;
+		exit(-1);
 	}
 
 	// try to connect to bus
 	if (ioctl(file, I2C_SLAVE, ADDRESS) < 0) {
 		cout << "Failed to connect to slave at address " << ADDRESS << endl;
-		return -1;
+		exit(-1);
 	}
 
 	while (true) {
