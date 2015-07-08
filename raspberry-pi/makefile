@@ -1,2 +1,2 @@
 all: 
-	g++ src/booth_script.cpp -o pp
+	g++ src/pp.cpp -o pp
