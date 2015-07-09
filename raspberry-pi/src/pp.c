@@ -1,4 +1,3 @@
-#include <iostream>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
@@ -9,8 +8,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <gphoto2/gphoto2-camera.h>
-
-using namespace std;
+#include <gphoto2/gphoto2-context.h>
 
 // specify the device name of the i2c bus
 static const char *DEVICE = "/dev/i2c-1";
@@ -21,7 +19,10 @@ static const int ADDRESS = 0x04;
 // the amount of before rearming for the next photo
 static const int CYCLE_DELAY = 5000000;
 
-int main() {
+static void ctx_error_func (GPContext *context, const char *format, va_list args, void *data); 
+static void ctx_status_func (GPContext *context, const char *format, va_list args, void *data);
+
+int main(int argc, char **argv) {
 	int file, photoGo = 0;
 	int exitCode = 0;
 	unsigned char command[16];
@@ -32,7 +33,11 @@ int main() {
 	GPContext *context;
 	CameraText text;
 
-	context = sample_create_context();
+	context = gp_context_new();
+	
+	gp_context_set_error_func (context, ctx_error_func, NULL);
+        gp_context_set_status_func (context, ctx_status_func, NULL);
+		
 	gp_camera_new(&camera);
 
 	ret = gp_camera_init(camera, context);
@@ -48,24 +53,24 @@ int main() {
 		gp_camera_free(camera);
 		return 0;
 	}
-	printf("Summary:\n%s\n, text.text");
+	printf("Summary:\n%s\n", text.text);
 
 	// try to open i2c device
 	if ((file = open(DEVICE, O_RDWR)) < 0) {
-		cout << "Failed to open i2c device" << endl;
+		printf("Failed to open i2c device");
 		exit(-1);
 	}
 
 	// try to connect to bus
 	if (ioctl(file, I2C_SLAVE, ADDRESS) < 0) {
-		cout << "Failed to connect to slave at address " << ADDRESS << endl;
+		printf("Failed to connect to slave at address %d\n", ADDRESS);
 		exit(-1);
 	}
 
-	while (true) {
+	while (1) {
 
 		// attempt to arm the arduino
-		cout << "Arming the arduino..." << endl;
+		printf("Arming the arduino...\n");
 
 		command[0] = 1;
 		if (write(file, command, 1) == 1) {
@@ -83,18 +88,18 @@ int main() {
 				}
 			}
 		} else {
-			cout << "Failed to write code " << 1 << " to arduino" << endl;
+			printf("Failed to write code %d to arduino\n", 1);
 			exitCode = -1;
 		}
 
 		// test whether countdown timer had finished
 		if (photoGo == 1) {
 			photoGo = 0;
-			cout << "Taking picture!" << endl;
+			printf("Taking picture!\n");
 			// picture code...
 
 			// now disarm
-			cout << "Disarming..." << endl;
+			printf("Disarming...\n");
 
 			command[0] = 2;
 			if (write(file, command, 1) == 1) {
@@ -110,17 +115,33 @@ int main() {
 					}
 				}
 
-				cout << "Arduino disarmed" << endl;
+				printf("Arduino disarmed\n");
 			} else {
-				cout << "Failed to write code " << 2 << " to arduino" << endl;
+				printf("Failed to write code %d to arduino\n", 2);
 				exitCode = -1;
 			}
 		}
 
-		cout << "Trying again in " << CYCLE_DELAY / 1000000 << " seconds..." << endl;
+		printf("Trying again in %d seconds...\n", CYCLE_DELAY / 1000000);
 		usleep(CYCLE_DELAY);
 	}
+	
 	gp_camera_exit(camera, context);
 	gp_camera_free(camera);
+	
 	return 0;
+}
+
+static void ctx_error_func (GPContext *context, const char *format, va_list args, void *data) {
+        fprintf  (stderr, "\n");
+        fprintf  (stderr, "*** Contexterror ***              \n");
+        vfprintf (stderr, format, args);
+        fprintf  (stderr, "\n");
+        fflush   (stderr);
+}
+
+static void ctx_status_func (GPContext *context, const char *format, va_list args, void *data) {
+        vfprintf (stderr, format, args);
+        fprintf  (stderr, "\n");
+        fflush   (stderr);
 }
