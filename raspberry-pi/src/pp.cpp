@@ -26,8 +26,31 @@ int main() {
 	int exitCode = 0;
 	unsigned char command[16];
 	unsigned char response[1];
-	
-	// try to open i2c device 
+	Camera *camera;
+	int ret;
+	char *owner;
+	GPContext *context;
+	CameraText text;
+
+	context = sample_create_context();
+	gp_camera_new(&camera);
+
+	ret = gp_camera_init(camera, context);
+	if (ret < GP_OK) {
+		printf("No camera auto detected.\n");
+		gp_camera_free(camera);
+		return 0 ;
+	}
+
+	ret = gp_camera_get_summary(camera, &text, context);
+	if (ret < GP_OK) {
+		printf("Camera failed retrieving summary.\n");
+		gp_camera_free(camera);
+		return 0;
+	}
+	printf("Summary:\n%s\n, text.text");
+
+	// try to open i2c device
 	if ((file = open(DEVICE, O_RDWR)) < 0) {
 		cout << "Failed to open i2c device" << endl;
 		exit(-1);
@@ -40,19 +63,19 @@ int main() {
 	}
 
 	while (true) {
-		
+
 		// attempt to arm the arduino
 		cout << "Arming the arduino..." << endl;
-		
+
 		command[0] = 1;
 		if (write(file, command, 1) == 1) {
-			
+
 			// write was successful, give the arduino a second to
 			// process before polling for response
 			usleep(1000000);
-			
+
 			// now start polling for response
-			
+
 			while (read(file, response, 1) == 1) {
 				if ((int) response[0] == 1) {
 					photoGo = 1;
@@ -63,7 +86,7 @@ int main() {
 			cout << "Failed to write code " << 1 << " to arduino" << endl;
 			exitCode = -1;
 		}
-		
+
 		// test whether countdown timer had finished
 		if (photoGo == 1) {
 			photoGo = 0;
@@ -72,31 +95,32 @@ int main() {
 
 			// now disarm
 			cout << "Disarming..." << endl;
-			
+
 			command[0] = 2;
 			if (write(file, command, 1) == 1) {
-				
+
 				// write was successful, give the arduino a second to
 				// process before polling for response
 				usleep(1000000);
-				
-				// now start polling for response	
+
+				// now start polling for response
 				while (read(file, response, 1) == 1) {
 					if ((int) response[0] == 2) {
 						break;
 					}
 				}
-				
+
 				cout << "Arduino disarmed" << endl;
 			} else {
 				cout << "Failed to write code " << 2 << " to arduino" << endl;
 				exitCode = -1;
 			}
 		}
-		
+
 		cout << "Trying again in " << CYCLE_DELAY / 1000000 << " seconds..." << endl;
 		usleep(CYCLE_DELAY);
 	}
+	gp_camera_exit(camera, context);
+	gp_camera_free(camera);
 	return 0;
 }
-
