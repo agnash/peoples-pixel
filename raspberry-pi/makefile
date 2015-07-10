@@ -1,2 +1,2 @@
 all: 
-	g++ src/pp.cpp -o pp
+	g++ -o pp src/pp.c -lgphoto2
