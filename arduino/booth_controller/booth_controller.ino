@@ -1,29 +1,23 @@
+// Copyright (c) 2015 Aaron Nash
+//
+// This source file is licensed under the terms of the "GPL (v2)" license.
+// Please see the file LICENSE.md included in this distribution for licensing
+// terms.
+//
+
 #include <Wire.h>
 #include <SegmentDisplay.h>
-
-/*
-* temporary - will replace with approriate libaries for 7-segment display
-*/
-#include <LiquidCrystal.h>
 
 // after bit shifting will be converted to I2C slave address 8
 #define SLAVE_ADDRESS 0x04
 
-/*
-* temporary - initialize lcd object and set I2C simulating arming button
-* pin/state
-*/
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
-const char armingPin = 6;
-char armingButtonState = LOW;
-
 SegmentDisplay segmentDisplay;
 
 // armed indicator led pin
-const char armedPin = 8;
+const char armedPin = 4;
 
 // user trigger button pin and state
-const char triggerPin = 7;
+const char triggerPin = 5;
 char triggerState = LOW;
 
 // the controller must be armed by an I2C message before the user button will be
@@ -46,39 +40,28 @@ int outCode;
 void setup() {
   // start I2C slave
   Wire.begin(SLAVE_ADDRESS);
-  
+
   // I2C communication callbacks
   Wire.onReceive(receiveData);
   Wire.onRequest(sendData);
-  
-  /*
-  * temporary - setup and test lcd
-  */
-  lcd.begin(16, 2);
-  printStatus();
-  
+
   // setup the common cathode segment display
-  segmentDisplay.initialize(10, 9, 6, 17, 16, 15, 14, 0);
+  segmentDisplay.initialize(6, 7, 8, 9, 10, 11, 12, 13);
 
   // set the armedPin to OUTPUT
   pinMode(armedPin, OUTPUT);
-  
+
   // set the triggerPin to INPUT
   pinMode(triggerPin, INPUT);
 }
 
 void loop() {
-  
+
   triggerState = digitalRead(triggerPin);
   if (triggerState == HIGH && systemArmed && triggerReady) {
     digitalWrite(armedPin, LOW);
     triggerReady = false;
-    
-    /*
-    * temporary
-    */
-    printStatus();
-    
+
     countdown();
   }
 }
@@ -95,11 +78,7 @@ void receiveData(int numBytes) {
         disarmAfterCountdown();
         break;
       default:
-        /*
-        * temporary
-        */
-        lcd.clear();
-        lcd.print("Unrecognized cmd");
+        break;
     }
   }
 }
@@ -114,22 +93,12 @@ void armBeforeCountdown() {
     systemArmed = true;
     triggerReady = true;
     digitalWrite(armedPin, HIGH);
-    
-    /*
-    * temporary
-    */
-    printStatus();
   }
 }
 
 void disarmAfterCountdown() {
   systemArmed = false;
-  
-  /*
-  * temporary
-  */
-  printStatus();
-  
+
   outCode = 2;
 }
 
@@ -138,37 +107,13 @@ void countdown() {
   long curr = millis();
   long delta = millis() - curr;
   while ((interval - delta) >= 0) {
-    /*
-    * temporary
-    */
-    //lcd.setCursor(15, 0);
-    //lcd.print((((interval - delta)) / 1000) + 1);
-    
+
     segmentDisplay.print((((interval - delta)) / 1000) + 1);
-    
+
     delta = millis() - curr;
   }
-  
-  /*
-  * temporary
-  */
-  //lcd.setCursor(15, 0);
-  //lcd.print(" ");
-  
+
   segmentDisplay.clear();
-  
+
   outCode = 1;
 }
-
-/*
-* temporay - print system state to lcd display
-*/
-void printStatus() {
-  lcd.clear();
-  lcd.print("Sys. armed:  ");
-  lcd.print(systemArmed);
-  lcd.setCursor(0, 1);
-  lcd.print("Trig. ready: ");
-  lcd.print(triggerReady);
-}
-
