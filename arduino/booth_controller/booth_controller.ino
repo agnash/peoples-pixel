@@ -1,3 +1,10 @@
+// Copyright (c) 2015 Aaron Nash
+//
+// This source file is licensed under the terms of the "GPL (v2)" license.
+// Please see the file LICENSE.md included in this distribution for licensing
+// terms.
+//
+
 #include <Wire.h>
 #include <SegmentDisplay.h>
 
@@ -33,28 +40,28 @@ int outCode;
 void setup() {
   // start I2C slave
   Wire.begin(SLAVE_ADDRESS);
-  
+
   // I2C communication callbacks
   Wire.onReceive(receiveData);
   Wire.onRequest(sendData);
-  
+
   // setup the common cathode segment display
   segmentDisplay.initialize(6, 7, 8, 9, 10, 11, 12, 13);
 
   // set the armedPin to OUTPUT
   pinMode(armedPin, OUTPUT);
-  
+
   // set the triggerPin to INPUT
   pinMode(triggerPin, INPUT);
 }
 
 void loop() {
-  
+
   triggerState = digitalRead(triggerPin);
   if (triggerState == HIGH && systemArmed && triggerReady) {
     digitalWrite(armedPin, LOW);
     triggerReady = false;
-    
+
     countdown();
   }
 }
@@ -91,7 +98,7 @@ void armBeforeCountdown() {
 
 void disarmAfterCountdown() {
   systemArmed = false;
-  
+
   outCode = 2;
 }
 
@@ -100,14 +107,13 @@ void countdown() {
   long curr = millis();
   long delta = millis() - curr;
   while ((interval - delta) >= 0) {
-    
+
     segmentDisplay.print((((interval - delta)) / 1000) + 1);
-    
+
     delta = millis() - curr;
   }
-  
+
   segmentDisplay.clear();
-  
+
   outCode = 1;
 }
-

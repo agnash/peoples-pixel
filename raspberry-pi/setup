@@ -1,3 +1,0 @@
-make
-
-mv -f pp /usr/local/bin/
