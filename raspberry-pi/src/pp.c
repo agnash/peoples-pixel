@@ -21,33 +21,30 @@
 #include <gphoto2/gphoto2-camera.h>
 #include <gphoto2/gphoto2-context.h>
 
-static int *shared;
-
 // specify the device name of the i2c bus
 static const char *DEVICE = "/dev/i2c-1";
+
+// the name given to whatever image was last fetched from camera
+static const char *CURRENT_IMAGE = "current_image";
 
 // specify the arduino slave address
 static const int ADDRESS = 0x04;
 
-// the amount of before rearming for the next photo
-static const int CYCLE_DELAY = 5000000;
-
 static void ctx_error_func (GPContext *context, const char *format, va_list args, void *data);
 static void ctx_status_func (GPContext *context, const char *format, va_list args, void *data);
 int takePicture(GPContext *context, Camera *camera, const char *filename);
+
 int main(int argc, char **argv) {
-	shared = (int*) mmap(NULL, sizeof *shared, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
 
 	int file, photoGo = 0;
 	int exitCode = 0;
 	int status;
+	int ret;
 	unsigned char command[16];
 	unsigned char response[1];
-	Camera *camera;
-	int ret;
 	char *owner;
-	const char *currentImage = "current_image";
 	GPContext *context;
+	Camera *camera;
 	CameraText text;
 
 	context = gp_context_new();
@@ -57,28 +54,30 @@ int main(int argc, char **argv) {
 
 	gp_camera_new(&camera);
 
+	// try to find a camera, terminate if none found
 	ret = gp_camera_init(camera, context);
 	if (ret < GP_OK) {
-		printf("No camera auto detected.\n");
+		printf("No camera auto detected\n");
 		gp_camera_free(camera);
 		exit(-1);
 	}
 
+	// return the found camera's configuration info, terminate if error
 	ret = gp_camera_get_summary(camera, &text, context);
 	if (ret < GP_OK) {
-		printf("Camera failed retrieving summary.\n");
+		printf("Camera failed retrieving summary\n");
 		gp_camera_free(camera);
 		exit(-1);
 	}
 	printf("Summary:\n%s\n", text.text);
 
-	// try to open i2c device
+	// try to open i2c device, terminate if no active i2c device
 	if ((file = open(DEVICE, O_RDWR)) < 0) {
 		printf("Failed to open i2c device");
 		exit(-1);
 	}
 
-	// try to connect to bus
+	// try to connect to bus, terminate on failed connection
 	if (ioctl(file, I2C_SLAVE, ADDRESS) < 0) {
 		printf("Failed to connect to slave at address %d\n", ADDRESS);
 		exit(-1);
@@ -113,22 +112,20 @@ int main(int argc, char **argv) {
 		if (photoGo == 1) {
 			photoGo = 0;
 			printf("Taking picture!\n");
-			// picture code...
-			takePicture(context, camera, currentImage);
+			
+			// take the picture
+			takePicture(context, camera, CURRENT_IMAGE);
 
 			int pid;
 			pid = fork();
 
 			if (pid == 0) {
-				int id = getpid();
-				*shared = id;
-				int err = execl("/usr/bin/fbi", "fbi", "-T", "2", "-d", "/dev/fb0", "-noverbose", "-a", currentImage);
+				int err = execl("/usr/bin/fbi", "fbi", "-T", "2", "-d", "/dev/fb0", "-noverbose", "-a", CURRENT_IMAGE);
 			}
-			printf("%d\n", *shared);
 
 			sleep(10);
 
-			kill(*shared + 1, SIGKILL);
+			kill(pid, SIGINT);
 
 			// now disarm
 			printf("Disarming...\n");
@@ -183,7 +180,7 @@ int takePicture(GPContext *context, Camera *camera, const char *filename) {
 	ret = gp_camera_capture(camera, GP_CAPTURE_IMAGE, &cameraFilePath, context);
 
 	if (ret < GP_OK) {
-		printf("Camera failed to capture image.\n");
+		printf("Camera failed to capture image\n");
 		gp_camera_free(camera);
 		exit(-1);
 	}
@@ -192,13 +189,13 @@ int takePicture(GPContext *context, Camera *camera, const char *filename) {
  	ret = gp_file_new_from_fd(&file, fd);
 
  	if (ret < GP_OK) {
-		printf("Couldn't create destination file on Raspberry Pi.\n");
+		printf("Couldn't create destination file on Raspberry Pi\n");
  	}
 
 	ret = gp_camera_file_get(camera, cameraFilePath.folder, cameraFilePath.name,  GP_FILE_TYPE_NORMAL, file, context);
 
  	if (ret < GP_OK) {
-		printf("Couldn't copy image from camera.\n");
+		printf("Couldn't copy image from camera\n");
  	}
 
 	gp_file_free(file);
