@@ -5,16 +5,17 @@
 // terms.
 //
 
-#include <signal.h>
 #include <sys/mman.h>
 #include <sys/types.h>
+#include <sys/ioctl.h>
+#include <signal.h>
+#include <wait.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <linux/i2c-dev.h>
-#include <sys/ioctl.h>
 #include <fcntl.h>
 #include <stdarg.h>
 #include <unistd.h>
@@ -31,7 +32,7 @@ static const char *CURRENT_IMAGE = "current_image";
 static const int ADDRESS = 0x04;
 
 // seconds controller waits for image viewer to finish buffering image on screen
-static const int SLEEP_TIME = 5;
+static const int SLEEP_TIME = 10;
 
 // function prototypes
 static void ctx_error_func (GPContext *context,
@@ -56,7 +57,7 @@ int main(int argc, char **argv) {
 	unsigned char command[16];
 	unsigned char response[1];
 	char *owner;
-	char *errMsg;
+	const char *errMsg;
 	GPContext *context;
 	Camera *camera;
 	CameraText text;
@@ -64,7 +65,7 @@ int main(int argc, char **argv) {
 	context = gp_context_new();
 
 	gp_context_set_error_func (context, ctx_error_func, NULL);
-  gp_context_set_status_func (context, ctx_status_func, NULL);
+	gp_context_set_status_func (context, ctx_status_func, NULL);
 
 	gp_camera_new(&camera);
 
@@ -138,8 +139,9 @@ int main(int argc, char **argv) {
 				// fork was successful
 				if (pid == 0) {
 					// first child
-
+					
 					// start fbi image viewer
+					printf("\tfbi: ");
 					int err = execl("/usr/bin/fbi",
 					"fbi",
 					"-T",
@@ -149,18 +151,24 @@ int main(int argc, char **argv) {
 					"-noverbose",
 					"-a",
 					CURRENT_IMAGE);
+					
+					if (err < 0) {
+						errMsg = "Failed to start image viewer";
+						exitCode = -1;
+						break;
+					}
 				} else {
 					// parent
 
 					// give first child time to buffer image to screen
 					printf("Controller sleeping for %d seconds...\n", SLEEP_TIME);
-					sleep(5);
+					sleep(SLEEP_TIME);
 
 					// upon wake, try to kill the fbi process by forking another process
 					// to killall (the fbi child forks another fbi process which does
 					// run in the same group as the child and parent)
-					printf("We're back! Terminating image viewer now...");
-					int killStatus;
+					printf("We're back! Terminating image viewer now...\n");
+					int* killStatus;
 					pid = fork();
 
 					if (pid >= 0) {
@@ -170,11 +178,21 @@ int main(int argc, char **argv) {
 
 							// kill fbi processes by command name
 							int err = execl("/usr/bin/killall", "killall", "/usr/bin/fbi");
+							
+							if (err < 0) {
+								errMsg = "Failed to terminate fbi processes";
+								exitCode = -1;
+								break;
+							}
 						} else {
 							// parent
 
 							// wait for second child to kill fbi processes (sends SIGTERM)
-							waitpid(pid, killStatus);
+							if (pid != waitpid(pid, killStatus, 0)) {
+								errMsg = "Error during image viewer termination process";
+								exitCode = -1;
+								break;
+							}
 
 							// now disarm
 							printf("Disarming...\n");
