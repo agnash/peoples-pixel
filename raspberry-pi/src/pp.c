@@ -56,6 +56,7 @@ int main(int argc, char **argv) {
 	unsigned char command[16];
 	unsigned char response[1];
 	char *owner;
+	char *errMsg;
 	GPContext *context;
 	Camera *camera;
 	CameraText text;
@@ -136,7 +137,7 @@ int main(int argc, char **argv) {
 			if (pid >= 0) {
 				// fork was successful
 				if (pid == 0) {
-					// child
+					// first child
 
 					// start fbi image viewer
 					int err = execl("/usr/bin/fbi",
@@ -151,36 +152,62 @@ int main(int argc, char **argv) {
 				} else {
 					// parent
 
-					// give child time to buffer image to screen
+					// give first child time to buffer image to screen
 					printf("Controller sleeping for %d seconds...\n", SLEEP_TIME);
 					sleep(5);
 
-					// upon wake, try to kill the fbi process
-					kill(pid, SIGINT);
+					// upon wake, try to kill the fbi process by forking another process
+					// to killall (the fbi child forks another fbi process which does
+					// run in the same group as the child and parent)
+					printf("We're back! Terminating image viewer now...");
+					int killStatus;
+					pid = fork();
 
-					// now disarm
-					printf("Disarming...\n");
+					if (pid >= 0) {
+						// fork was successful
+						if (pid == 0) {
+							// second child
 
-					command[0] = 2;
-					if (write(file, command, 1) == 1) {
+							// kill fbi processes by command name
+							int err = execl("/usr/bin/killall", "killall", "/usr/bin/fbi");
+						} else {
+							// parent
 
-						// write was successful, give the arduino a second to
-						// process before polling for response
-						usleep(1000000);
+							// wait for second child to kill fbi processes (sends SIGTERM)
+							waitpid(pid, killStatus);
 
-						// now start polling for response
-						while (read(file, response, 1) == 1) {
-							if ((int) response[0] == 2) {
-								break;
+							// now disarm
+							printf("Disarming...\n");
+
+							command[0] = 2;
+							if (write(file, command, 1) == 1) {
+
+								// write was successful, give the arduino a second to
+								// process before polling for response
+								usleep(1000000);
+
+								// now start polling for response
+								while (read(file, response, 1) == 1) {
+									if ((int) response[0] == 2) {
+										break;
+									}
+								}
+								printf("Arduino disarmed\n");
+							} else {
+								printf("Failed to write code %d to arduino\n", 2);
+								exitCode = -1;
 							}
 						}
-						printf("Arduino disarmed\n");
 					} else {
-						printf("Failed to write code %d to arduino\n", 2);
+						// second child failed to fork
+						errMsg = "No process to terminate image viewer";
 						exitCode = -1;
+						break;
 					}
 				}
 			} else {
+				// first child failed to fork
+				errMsg = "No process for image viewer";
 				exitCode = -1;
 				break;
 			}
@@ -190,10 +217,17 @@ int main(int argc, char **argv) {
 	gp_camera_exit(camera, context);
 	gp_camera_free(camera);
 
+	if (exitCode < 0) {
+		printf("%s\n", errMsg);
+	}
+
 	return exitCode;
 }
 
-static void ctx_error_func(GPContext *context, const char *format, va_list args, void *data) {
+static void ctx_error_func(GPContext *context,
+	const char *format,
+	va_list args,
+	void *data) {
         fprintf  (stderr, "\n");
         fprintf  (stderr, "*** Contexterror ***              \n");
         vfprintf (stderr, format, args);
@@ -201,7 +235,10 @@ static void ctx_error_func(GPContext *context, const char *format, va_list args,
         fflush   (stderr);
 }
 
-static void ctx_status_func(GPContext *context, const char *format, va_list args, void *data) {
+static void ctx_status_func(GPContext *context,
+	const char *format,
+	va_list args,
+	void *data) {
         vfprintf (stderr, format, args);
         fprintf  (stderr, "\n");
         fflush   (stderr);
