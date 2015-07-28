@@ -30,10 +30,23 @@ static const char *CURRENT_IMAGE = "current_image";
 // specify the arduino slave address
 static const int ADDRESS = 0x04;
 
-static void ctx_error_func (GPContext *context, const char *format, va_list args, void *data);
-static void ctx_status_func (GPContext *context, const char *format, va_list args, void *data);
+// seconds controller waits for image viewer to finish buffering image on screen
+static const int SLEEP_TIME = 5;
+
+// function prototypes
+static void ctx_error_func (GPContext *context,
+	const char *format,
+	va_list args,
+	void *data);
+
+static void ctx_status_func (GPContext *context,
+	const char *format,
+	va_list args,
+	void *data);
+
 int takePicture(GPContext *context, Camera *camera, const char *filename);
 
+// main
 int main(int argc, char **argv) {
 
 	int file, photoGo = 0;
@@ -50,7 +63,7 @@ int main(int argc, char **argv) {
 	context = gp_context_new();
 
 	gp_context_set_error_func (context, ctx_error_func, NULL);
-        gp_context_set_status_func (context, ctx_status_func, NULL);
+  gp_context_set_status_func (context, ctx_status_func, NULL);
 
 	gp_camera_new(&camera);
 
@@ -83,6 +96,7 @@ int main(int argc, char **argv) {
 		exit(-1);
 	}
 
+	// main controller loop
 	while (1) {
 
 		// attempt to arm the arduino
@@ -108,46 +122,67 @@ int main(int argc, char **argv) {
 			exitCode = -1;
 		}
 
-		// test whether countdown timer had finished
+		// test whether countdown timer has finished
 		if (photoGo == 1) {
 			photoGo = 0;
 			printf("Taking picture!\n");
-			
+
 			// take the picture
 			takePicture(context, camera, CURRENT_IMAGE);
 
 			int pid;
 			pid = fork();
 
-			if (pid == 0) {
-				int err = execl("/usr/bin/fbi", "fbi", "-T", "2", "-d", "/dev/fb0", "-noverbose", "-a", CURRENT_IMAGE);
-			}
+			if (pid > 0) {
+				// fork was successful
+				if (pid == 0) {
+					// child
 
-			sleep(10);
+					// start fbi image viewer
+					int err = execl("/usr/bin/fbi",
+					"fbi",
+					"-T",
+					"2",
+					"-d",
+					"/dev/fb0",
+					"-noverbose",
+					"-a",
+					CURRENT_IMAGE);
+				} else {
+					// parent
 
-			kill(pid, SIGINT);
+					// give child time to buffer image to screen
+					printf("Controller sleeping for %d seconds...\n", SLEEP_TIME);
+					sleep(5);
 
-			// now disarm
-			printf("Disarming...\n");
+					// upon wake, try to kill the fbi process
+					kill(pid, SIGINT);
 
-			command[0] = 2;
-			if (write(file, command, 1) == 1) {
+					// now disarm
+					printf("Disarming...\n");
 
-				// write was successful, give the arduino a second to
-				// process before polling for response
-				usleep(1000000);
+					command[0] = 2;
+					if (write(file, command, 1) == 1) {
 
-				// now start polling for response
-				while (read(file, response, 1) == 1) {
-					if ((int) response[0] == 2) {
-						break;
+						// write was successful, give the arduino a second to
+						// process before polling for response
+						usleep(1000000);
+
+						// now start polling for response
+						while (read(file, response, 1) == 1) {
+							if ((int) response[0] == 2) {
+								break;
+							}
+						}
+						printf("Arduino disarmed\n");
+					} else {
+						printf("Failed to write code %d to arduino\n", 2);
+						exitCode = -1;
 					}
 				}
-
-				printf("Arduino disarmed\n");
 			} else {
-				printf("Failed to write code %d to arduino\n", 2);
 				exitCode = -1;
+				break;
 			}
 		}
 	}
@@ -155,7 +190,7 @@ int main(int argc, char **argv) {
 	gp_camera_exit(camera, context);
 	gp_camera_free(camera);
 
-	return 0;
+	return exitCode;
 }
 
 static void ctx_error_func(GPContext *context, const char *format, va_list args, void *data) {
