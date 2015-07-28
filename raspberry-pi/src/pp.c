@@ -133,7 +133,7 @@ int main(int argc, char **argv) {
 			int pid;
 			pid = fork();
 
-			if (pid > 0) {
+			if (pid >= 0) {
 				// fork was successful
 				if (pid == 0) {
 					// child
