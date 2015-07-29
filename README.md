@@ -8,6 +8,32 @@ libgphoto2
 
 Linux frame buffer application(FBI)
 
+# Parts List
+
+Raspberry Pi (With at least 2 USB ports)
+
+micro-USB power cable
+
+Ethernet cable or HDMI cable (To use the pi) 
+
+Arduino Uno Rev 3 or Arduino Mega 2560
+
+SparkFun Logic Level Converter - Bi-Directional
+
+Large or Massive Arcade Button with LED - 60mm or 100mm Red
+
+7-segment common cathode LED display 
+
+1x Full size breadboard
+
+Large jumper cable pack (male to male)
+
+Female to female or female to male jumper cable pack
+
+1/4 watt resistor kit
+
+Digital camera from the following list: http://www.gphoto.org/proj/libgphoto2/support.php
+
 
 # Set up
 
