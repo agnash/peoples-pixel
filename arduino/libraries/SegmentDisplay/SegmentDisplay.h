@@ -62,9 +62,9 @@ private:
   // PRIVATE FIELDS
   // matches a particular LED segment to a particular annode
   // (for now requires 7-segment common cathode part nos. 18011Ax)
-  enum seg: byte {E=2, D=3, C=4, G=6, F=7, DP=8, A=9, B=10};
+  enum Seg: byte {E=2, D=3, C=4, G=6, F=7, DP=8, A=9, B=10};
   // seg field
-  seg segments;
+  Seg segments;
   // maps the provided digital Arduino pins to the data pins of the specified
   // display
   byte pinMap[MAX_PINS + 1] = {};
