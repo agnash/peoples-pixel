@@ -13,29 +13,25 @@
 
 SegmentDisplay segmentDisplay;
 
-// armed indicator led pin
-const char armedPin = 4;
+// ready indicator led pin
+const char readyPin = 4;
 
-// user trigger button pin and state
-const char triggerPin = 5;
-char triggerState = LOW;
-
-// the controller must be armed by an I2C message before the user button will be
-// activated. Once armed the system cannot be armed again until after a
-// countdown and I2C send
-boolean systemArmed = false;
-
-// captures the state of trigger button. If false, prevents a button push
-// from triggering a countdown. Should be set to true when the system becomes
-// armed and then to false again the first time the button is pushed.
-boolean triggerReady = false;
+// user button pin and state
+const char buttonPin = 5;
+int buttonState;
 
 // countdown timer = 5 seconds
 const long interval = 5000;
 
-// contains the last data received or sent over the i2c bus
-int inCode;
-int outCode;
+// codes that can be received from the Raspberry-Pi
+enum ReceiveCodes: byte {REBOOT, ARM, DISARM, TRIGGER};
+
+// codes that can be sent to the Raspberry-Pi
+enum States: byte {NANR, AR, ANR, CAP, ERR};
+
+// these variables actually hold the current state and last message
+byte state;
+byte msg;
 
 void setup() {
   // start I2C slave
@@ -45,61 +41,65 @@ void setup() {
   Wire.onReceive(receiveData);
   Wire.onRequest(sendData);
 
+  // communication codes
+  ReceiveCodes receives;
+  States sends;
+
   // setup the common cathode segment display
   segmentDisplay.initialize(6, 7, 8, 9, 10, 11, 12, 13);
 
-  // set the armedPin to OUTPUT
-  pinMode(armedPin, OUTPUT);
+  // set the readyPin to OUTPUT
+  pinMode(readyPin, OUTPUT);
 
-  // set the triggerPin to INPUT
-  pinMode(triggerPin, INPUT);
+  // set the buttonPin to INPUT
+  pinMode(buttonPin, INPUT);
+
+  // set initial states
+  state = NANR;
+  buttonState = LOW;
 }
 
 void loop() {
 
-  triggerState = digitalRead(triggerPin);
-  if (triggerState == HIGH && systemArmed && triggerReady) {
-    digitalWrite(armedPin, LOW);
-    triggerReady = false;
-
-    countdown();
+  if (msg == REBOOT) {
+    // perform software reset...
   }
+
+  if (state == NANR && msg == ARM) {
+    state = AR;
+    digitalWrite(readyPin, HIGH);
+  }
+
+  /*****************************************************************
+  so that countdown triggering can happen remotely or via the button
+  *****************************************************************/
+  if ((buttonState = digitalRead(buttonPin)) == HIGH) {
+    msg = TRIGGER;
+  }
+  /****************************************************************/
+
+  if (state == AR && msg == TRIGGER) {
+    state = ANR;
+    digitalWrite(readyPin, LOW);
+    countdown();
+    state = CAP;
+  }
+
+  if (msg == DISARM) {
+    state = NANR;
+  }
+
 }
 
 void receiveData(int numBytes) {
   while (Wire.available()) {
-    // capture the data and decide which command it represents
-    inCode = Wire.read();
-    switch (inCode) {
-      case 1:
-        armBeforeCountdown();
-        break;
-      case 2:
-        disarmAfterCountdown();
-        break;
-      default:
-        break;
-    }
+    msg = Wire.read();
   }
 }
 
 void sendData() {
   // send the outgoing code
-  Wire.write(outCode);
-}
-
-void armBeforeCountdown() {
-  if (!systemArmed) {
-    systemArmed = true;
-    triggerReady = true;
-    digitalWrite(armedPin, HIGH);
-  }
-}
-
-void disarmAfterCountdown() {
-  systemArmed = false;
-
-  outCode = 2;
+  Wire.write(state);
 }
 
 // nonblocking countdown timer
@@ -114,6 +114,4 @@ void countdown() {
   }
 
   segmentDisplay.clear();
-
-  outCode = 1;
 }
