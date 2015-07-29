@@ -35,7 +35,7 @@ Female to female or female to male jumper cable pack
 Digital camera from the following list: http://www.gphoto.org/proj/libgphoto2/support.php
 
 
-# Set up
+# Set up Raspberry Pi
 
 After installing Raspbian Wheezy and getting your user setup per the instructions above...
 
@@ -99,3 +99,11 @@ $ sudo ./setup.bash
 $ pp 
 ```
 (the actual program...will fail unless camera and Arduino is properly configured, powered on and connected)
+
+# Set up Arduino
+
+1: Download Arduino IDE
+
+https://www.arduino.cc/en/main/software
+
+AARON ADD ARDUNINO STUFF HERE
