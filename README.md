@@ -3,6 +3,12 @@
 This project combines a Raspberry Pi and Arduino Uno, along with necessary peripherals, to form a compact
 system capable of performing user-initiated image capture and presentation, such as would be typical in a "photo-booth" machine.
 
+# Dependencies
+libgphoto2
+
+Linux frame buffer application(FBI)
+
+
 # Set up
 
 After installing Raspbian Wheezy and getting your user setup per the instructions above...
