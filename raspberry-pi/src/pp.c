@@ -44,32 +44,36 @@ enum SendCodes {RESET = 0, ARM = 1, DISARM = 2, TRIGGER = 3, FAULT = 4};
 // codes that can be sent to the Raspberry-Pi
 enum ReceiveCodes {NANR = 0, AR = 1, ANR = 2, CAP = 3, ERR = 4};
 
-// function prototypes
+// prototypes
 static void ctx_error_func (GPContext *context,
 	const char *format,
 	va_list args,
 	void *data);
-
 static void ctx_status_func (GPContext *context,
 	const char *format,
 	va_list args,
 	void *data);
-
-int takePicture(GPContext *context, Camera *camera, const char *filename);
+void communicate(const int& msg);
+void proceedOnResponse(const int& expected, const time_t& timeout);
+void takePicture(GPContext *context, Camera *camera, const char *filename);
+void cleanFbi();
+void bufferImage();
+void handleSIGINT(int sig);
 
 // main
 int main(int argc, char **argv) {
 
 	int file, photoGo = 0;
-	int exitCode = 0;
 	int ret;
 	unsigned char command[16];
 	unsigned char response[1];
 	char *owner;
-	const char *errMsg;
 	GPContext *context;
 	Camera *camera;
 	CameraText text;
+
+	// register the interrupt handler
+	signal(SIGINT, handleSIGINT);
 
 	context = gp_context_new();
 
@@ -125,97 +129,24 @@ int main(int argc, char **argv) {
 		printf("Taking picture!\n");
 		takePicture(context, camera, CURRENT_IMAGE);
 
-		int pid;
-		pid = fork();
+		// now disarm
+		printf("Disarming...\n");
+		communicate(DISARM);
+		proceedOnResponse(NANR, STANDARD_TIMEOUT);
+		printf("Microcontroller disarmed\n");
 
-		if (pid >= 0) {
-			// fork was successful
-			if (pid == 0) {
-				// first child
+		// clean up any previous fbi processes
+		cleanFbi();
+		// load the new image
+		bufferImage();
 
-				// start fbi image viewer
-				printf("\tfbi: ");
-				int err = execl("/usr/bin/fbi",
-				"fbi",
-				"-T",
-				"2",
-				"-d",
-				"/dev/fb0",
-				"-noverbose",
-				"-a",
-				CURRENT_IMAGE);
+		// parent - give first child time to buffer image to screen
+		printf("Pi sleeping for %d seconds...\n", SLEEP_TIME);
+		sleep(SLEEP_TIME);
 
-				if (err < 0) {
-					errMsg = "Failed to start image viewer";
-					exitCode = -1;
-					break;
-				}
-			} else {
-				// parent
-
-				// give first child time to buffer image to screen
-				printf("Pi sleeping for %d seconds...\n", SLEEP_TIME);
-				sleep(SLEEP_TIME);
-
-				// upon wake, try to kill the fbi process by forking another process
-				// to killall (the fbi child forks another fbi process which does
-				// run in the same group as the child and parent)
-				printf("We're back! Terminating image viewer now...\n");
-				int* killStatus;
-				pid = fork();
-
-				if (pid >= 0) {
-					// fork was successful
-					if (pid == 0) {
-						// second child
-
-						// kill fbi processes by command name
-						int err = execl("/usr/bin/killall", "killall", "/usr/bin/fbi");
-
-						if (err < 0) {
-							errMsg = "Failed to terminate fbi processes";
-							exitCode = -1;
-							break;
-						}
-					} else {
-						// parent
-
-						// wait for second child to kill fbi processes (sends SIGTERM)
-						if (pid != waitpid(pid, killStatus, 0)) {
-							errMsg = "Error during image viewer termination process";
-							exitCode = -1;
-							break;
-						}
-
-						// now disarm
-						printf("Disarming...\n");
-						communicate(DISARM);
-						proceedOnResponse(NANR, STANDARD_TIMEOUT);
-						printf("Microcontroller disarmed\n");
-					}
-				} else {
-					// second child failed to fork
-					errMsg = "No process to terminate image viewer";
-					exitCode = -1;
-					break;
-				}
-			}
-		} else {
-			// first child failed to fork
-			errMsg = "No process for image viewer";
-			exitCode = -1;
-			break;
-		}
+		// wake up
+		printf("We're back!\n");
 	}
-
-	gp_camera_exit(camera, context);
-	gp_camera_free(camera);
-
-	if (exitCode < 0) {
-		printf("%s\n", errMsg);
-	}
-
-	return exitCode;
 }
 
 void communicate(const int& msg) {
@@ -267,37 +198,6 @@ void proceedOnResponse(const int& expected, const time_t& timeout) {
 	}
 }
 
-int takePicture(GPContext *context, Camera *camera, const char *filename) {
-	int fd, ret;
-	CameraFile *file;
-	CameraFilePath cameraFilePath;
-
-	ret = gp_camera_capture(camera, GP_CAPTURE_IMAGE, &cameraFilePath, context);
-
-	if (ret < GP_OK) {
-		printf("Camera failed to capture image\n");
-		gp_camera_free(camera);
-		exit(-1);
-	}
-	printf("Image captured was %s/%s\n", cameraFilePath.folder, cameraFilePath.name);
-	fd = open(filename, O_CREAT | O_WRONLY, 0644);
- 	ret = gp_file_new_from_fd(&file, fd);
-
- 	if (ret < GP_OK) {
-		printf("Couldn't create destination file on Raspberry Pi\n");
- 	}
-
-	ret = gp_camera_file_get(camera, cameraFilePath.folder, cameraFilePath.name,  GP_FILE_TYPE_NORMAL, file, context);
-
- 	if (ret < GP_OK) {
-		printf("Couldn't copy image from camera\n");
- 	}
-
-	gp_file_free(file);
-
-	return 0;
-}
-
 static void ctx_error_func(GPContext *context,
 	const char *format,
 	va_list args,
@@ -316,4 +216,111 @@ static void ctx_status_func(GPContext *context,
         vfprintf (stderr, format, args);
         fprintf  (stderr, "\n");
         fflush   (stderr);
+}
+
+void takePicture(GPContext *context, Camera *camera, const char *filename) {
+	int fd, ret = 0;
+	CameraFile *file;
+	CameraFilePath cameraFilePath;
+
+	ret = gp_camera_capture(camera, GP_CAPTURE_IMAGE, &cameraFilePath, context);
+
+	if (ret < GP_OK) {
+		printf("Camera failed to capture image\n");
+		gp_camera_free(camera);
+		exit(-1);
+	}
+	printf("Image captured was %s/%s\n", cameraFilePath.folder, cameraFilePath.name);
+	fd = open(filename, O_CREAT | O_WRONLY, 0644);
+ 	ret = gp_file_new_from_fd(&file, fd);
+
+ 	if (ret < GP_OK) {
+		printf("Couldn't create destination file on Raspberry Pi\n");
+		exit(-1);
+ 	}
+
+	ret = gp_camera_file_get(camera, cameraFilePath.folder, cameraFilePath.name,  GP_FILE_TYPE_NORMAL, file, context);
+
+ 	if (ret < GP_OK) {
+		printf("Couldn't copy image from camera\n");
+		exit(-1);
+ 	}
+
+	gp_file_free(file);
+}
+
+void cleanFbi() {
+	// fork child process
+	int* killStatus;
+	int pid = fork();
+
+	if (pid >= 0) {
+		// fork was successful
+		if (pid == 0) {
+			// child - kill fbi processes by command name
+			int err = execl("/usr/bin/killall", "killall", "/usr/bin/fbi");
+
+			if (err < 0) {
+				errMsg = "Failed to terminate fbi processes";
+				exitCode = -1;
+				break;
+			}
+		} else {
+			// parent - wait for second child to kill fbi processes (sends SIGTERM)
+			if (pid != waitpid(pid, killStatus, 0)) {
+				errMsg = "Error during image viewer termination process";
+				exitCode = -1;
+				break;
+			}
+		}
+	} else {
+		// child failed to fork
+		errMsg = "No process to terminate image viewer";
+		exit(-1);
+		break;
+	}
+}
+
+void bufferImage() {
+	// fork child process
+	int pid = fork();
+
+	if (pid >= 0) {
+		// fork was successful
+		if (pid == 0) {
+			// child - start fbi image viewer
+			printf("\tfbi: ");
+			int err = execl("/usr/bin/fbi",
+			"fbi",
+			"-T",
+			"2",
+			"-d",
+			"/dev/fb0",
+			"-noverbose",
+			"-a",
+			CURRENT_IMAGE);
+
+			if (err < 0) {
+				errMsg = "Failed to start image viewer";
+				exit(-1);
+				break;
+			}
+		}
+	} else {
+		// first child failed to fork
+		errMsg = "No process for image viewer";
+		exitCode = -1;
+		break;
+	}
+}
+
+void handleSIGINT(int sig) {
+
+	printf("Cleaning up residual fbi processes and releasing resources...\n");
+	cleanFbi();
+	gp_camera_exit(camera, context);
+	gp_camera_free(camera);
+	printf("Done\n");
+
+	exit(0);
 }
