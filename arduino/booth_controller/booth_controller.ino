@@ -13,8 +13,9 @@
 
 SegmentDisplay segmentDisplay;
 
-// ready indicator led pin
+// ready indicator led pin and last state
 const char readyPin = 4;
+int lastReadyState;
 
 // user button pin and state
 const char buttonPin = 5;
@@ -24,12 +25,14 @@ int buttonState;
 const long interval = 5000;
 
 // codes that can be received from the Raspberry-Pi
-enum ReceiveCodes: byte {REBOOT, ARM, DISARM, TRIGGER};
+enum Commands: byte {RESET = 0, ARM = 1, DISARM = 2, TRIGGER = 3, FAULT = 4};
+Commands receives;
 
 // codes that can be sent to the Raspberry-Pi
-enum States: byte {NANR, AR, ANR, CAP, ERR};
+enum States: byte {NANR = 0, AR = 1, ANR = 2, CAP = 3, ERR = 4};
+States sends;
 
-// these variables actually hold the current state and last message
+// current state and last message
 byte state;
 byte msg;
 
@@ -41,9 +44,7 @@ void setup() {
   Wire.onReceive(receiveData);
   Wire.onRequest(sendData);
 
-  // communication codes
-  ReceiveCodes receives;
-  States sends;
+
 
   // setup the common cathode segment display
   segmentDisplay.initialize(6, 7, 8, 9, 10, 11, 12, 13);
@@ -55,14 +56,17 @@ void setup() {
   pinMode(buttonPin, INPUT);
 
   // set initial states
-  state = NANR;
   buttonState = LOW;
+  digitalWrite(readyPin, LOW);
+  segmentDisplay.clear();
+  state = NANR;
+  msg = DISARM;
 }
 
 void loop() {
 
-  if (msg == REBOOT) {
-    // perform software reset...
+  if (msg == RESET) {
+    setup();
   }
 
   if (state == NANR && msg == ARM) {
@@ -89,6 +93,13 @@ void loop() {
     state = NANR;
   }
 
+  if (msg == FAULT) {
+    state = ERR;
+  }
+
+  if (state == ERR) {
+    segmentDisplay.print(ERROR);
+  }
 }
 
 void receiveData(int numBytes) {

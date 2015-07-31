@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <linux/i2c-dev.h>
 #include <fcntl.h>
 #include <stdarg.h>
@@ -34,6 +35,15 @@ static const int ADDRESS = 0x04;
 // seconds controller waits for image viewer to finish buffering image on screen
 static const int SLEEP_TIME = 10;
 
+// the error timeout duration on arduino communication
+static const time_t STANDARD_TIMEOUT = 5;
+
+// codes that can be received from the Raspberry-Pi
+enum SendCodes {RESET = 0, ARM = 1, DISARM = 2, TRIGGER = 3, FAULT = 4};
+
+// codes that can be sent to the Raspberry-Pi
+enum ReceiveCodes {NANR = 0, AR = 1, ANR = 2, CAP = 3, ERR = 4};
+
 // function prototypes
 static void ctx_error_func (GPContext *context,
 	const char *format,
@@ -52,7 +62,6 @@ int main(int argc, char **argv) {
 
 	int file, photoGo = 0;
 	int exitCode = 0;
-	int status;
 	int ret;
 	unsigned char command[16];
 	unsigned char response[1];
@@ -84,6 +93,8 @@ int main(int argc, char **argv) {
 		gp_camera_free(camera);
 		exit(-1);
 	}
+
+	// print summary of selected camera
 	printf("Summary:\n%s\n", text.text);
 
 	// try to open i2c device, terminate if no active i2c device
@@ -101,134 +112,99 @@ int main(int argc, char **argv) {
 	// main controller loop
 	while (1) {
 
-		// attempt to arm the arduino
-		printf("Arming the arduino...\n");
+		// arm the arduino
+		printf("Arming the microcontroller...\n");
+		communicate(ARM);
+		proceedOnResponse(AR, STANDARD_TIMEOUT);
+		printf("Microcontroller armed\n");
 
-		command[0] = 1;
-		if (write(file, command, 1) == 1) {
+		// wait for countdown to finish (errors out after an hour of inactivity)
+		proceedOnResponse(CAP, 3600)
 
-			// write was successful, give the arduino a second to
-			// process before polling for response
-			usleep(1000000);
+		// take the picture
+		printf("Taking picture!\n");
+		takePicture(context, camera, CURRENT_IMAGE);
 
-			// now start polling for response
+		int pid;
+		pid = fork();
 
-			while (read(file, response, 1) == 1) {
-				if ((int) response[0] == 1) {
-					photoGo = 1;
+		if (pid >= 0) {
+			// fork was successful
+			if (pid == 0) {
+				// first child
+
+				// start fbi image viewer
+				printf("\tfbi: ");
+				int err = execl("/usr/bin/fbi",
+				"fbi",
+				"-T",
+				"2",
+				"-d",
+				"/dev/fb0",
+				"-noverbose",
+				"-a",
+				CURRENT_IMAGE);
+
+				if (err < 0) {
+					errMsg = "Failed to start image viewer";
+					exitCode = -1;
+					break;
+				}
+			} else {
+				// parent
+
+				// give first child time to buffer image to screen
+				printf("Pi sleeping for %d seconds...\n", SLEEP_TIME);
+				sleep(SLEEP_TIME);
+
+				// upon wake, try to kill the fbi process by forking another process
+				// to killall (the fbi child forks another fbi process which does
+				// run in the same group as the child and parent)
+				printf("We're back! Terminating image viewer now...\n");
+				int* killStatus;
+				pid = fork();
+
+				if (pid >= 0) {
+					// fork was successful
+					if (pid == 0) {
+						// second child
+
+						// kill fbi processes by command name
+						int err = execl("/usr/bin/killall", "killall", "/usr/bin/fbi");
+
+						if (err < 0) {
+							errMsg = "Failed to terminate fbi processes";
+							exitCode = -1;
+							break;
+						}
+					} else {
+						// parent
+
+						// wait for second child to kill fbi processes (sends SIGTERM)
+						if (pid != waitpid(pid, killStatus, 0)) {
+							errMsg = "Error during image viewer termination process";
+							exitCode = -1;
+							break;
+						}
+
+						// now disarm
+						printf("Disarming...\n");
+						communicate(DISARM);
+						proceedOnResponse(NANR, STANDARD_TIMEOUT);
+						printf("Microcontroller disarmed\n");
+					}
+				} else {
+					// second child failed to fork
+					errMsg = "No process to terminate image viewer";
+					exitCode = -1;
 					break;
 				}
 			}
 		} else {
-			printf("Failed to write code %d to arduino\n", 1);
+			// first child failed to fork
+			errMsg = "No process for image viewer";
 			exitCode = -1;
-		}
-
-		// test whether countdown timer has finished
-		if (photoGo == 1) {
-			photoGo = 0;
-			printf("Taking picture!\n");
-
-			// take the picture
-			takePicture(context, camera, CURRENT_IMAGE);
-
-			int pid;
-			pid = fork();
-
-			if (pid >= 0) {
-				// fork was successful
-				if (pid == 0) {
-					// first child
-					
-					// start fbi image viewer
-					printf("\tfbi: ");
-					int err = execl("/usr/bin/fbi",
-					"fbi",
-					"-T",
-					"2",
-					"-d",
-					"/dev/fb0",
-					"-noverbose",
-					"-a",
-					CURRENT_IMAGE);
-					
-					if (err < 0) {
-						errMsg = "Failed to start image viewer";
-						exitCode = -1;
-						break;
-					}
-				} else {
-					// parent
-
-					// give first child time to buffer image to screen
-					printf("Controller sleeping for %d seconds...\n", SLEEP_TIME);
-					sleep(SLEEP_TIME);
-
-					// upon wake, try to kill the fbi process by forking another process
-					// to killall (the fbi child forks another fbi process which does
-					// run in the same group as the child and parent)
-					printf("We're back! Terminating image viewer now...\n");
-					int* killStatus;
-					pid = fork();
-
-					if (pid >= 0) {
-						// fork was successful
-						if (pid == 0) {
-							// second child
-
-							// kill fbi processes by command name
-							int err = execl("/usr/bin/killall", "killall", "/usr/bin/fbi");
-							
-							if (err < 0) {
-								errMsg = "Failed to terminate fbi processes";
-								exitCode = -1;
-								break;
-							}
-						} else {
-							// parent
-
-							// wait for second child to kill fbi processes (sends SIGTERM)
-							if (pid != waitpid(pid, killStatus, 0)) {
-								errMsg = "Error during image viewer termination process";
-								exitCode = -1;
-								break;
-							}
-
-							// now disarm
-							printf("Disarming...\n");
-
-							command[0] = 2;
-							if (write(file, command, 1) == 1) {
-
-								// write was successful, give the arduino a second to
-								// process before polling for response
-								usleep(1000000);
-
-								// now start polling for response
-								while (read(file, response, 1) == 1) {
-									if ((int) response[0] == 2) {
-										break;
-									}
-								}
-								printf("Arduino disarmed\n");
-							} else {
-								printf("Failed to write code %d to arduino\n", 2);
-								exitCode = -1;
-							}
-						}
-					} else {
-						// second child failed to fork
-						errMsg = "No process to terminate image viewer";
-						exitCode = -1;
-						break;
-					}
-				}
-			} else {
-				// first child failed to fork
-				errMsg = "No process for image viewer";
-				exitCode = -1;
-				break;
-			}
+			break;
 		}
 	}
 
@@ -242,24 +218,53 @@ int main(int argc, char **argv) {
 	return exitCode;
 }
 
-static void ctx_error_func(GPContext *context,
-	const char *format,
-	va_list args,
-	void *data) {
-        fprintf  (stderr, "\n");
-        fprintf  (stderr, "*** Contexterror ***              \n");
-        vfprintf (stderr, format, args);
-        fprintf  (stderr, "\n");
-        fflush   (stderr);
+void communicate(const int& msg) {
+	command[0] = msg;
+	if (write(file, command, 1) == 1) {
+		// write was successful, give the arduino a second to process
+		usleep(1000000);
+	} else {
+		printf("Failed to write code %d to microcontroller\n", msg);
+		exit(-1);
+	}
 }
 
-static void ctx_status_func(GPContext *context,
-	const char *format,
-	va_list args,
-	void *data) {
-        vfprintf (stderr, format, args);
-        fprintf  (stderr, "\n");
-        fflush   (stderr);
+void proceedOnResponse(const int& expected, const time_t& timeout) {
+	// bytes read
+	int bytes;
+	// for calculating the timeout
+	time_t currTime;
+
+	// get seconds since epoch
+	time_t startTime = time(NULL);
+	if (startTime == (time_t) -1) {
+		printf("Failed to get current time\n");
+		exit(-1);
+	}
+
+	// poll for response
+	while ((bytes = read(file, response, 1)) == 1) {
+		currTime = time(NULL);
+		if (currTime == (time_t) -1) {
+			printf("Failed to get current time\n");
+			exit(-1);
+		} else if (currTime > startTime + timeout) {
+			printf("Microcontroller communication timeout");
+			communicate(ERR);
+			exit(-1);
+		}
+
+		if ((int) response[0] == 1) {
+			photoGo = 1;
+			break;
+		}
+	}
+
+	// read error handling
+	if (bytes < 0) {
+		printf("Error reading from microcontroller\n");
+		exit(-1);
+	}
 }
 
 int takePicture(GPContext *context, Camera *camera, const char *filename) {
@@ -291,4 +296,24 @@ int takePicture(GPContext *context, Camera *camera, const char *filename) {
 	gp_file_free(file);
 
 	return 0;
+}
+
+static void ctx_error_func(GPContext *context,
+	const char *format,
+	va_list args,
+	void *data) {
+        fprintf  (stderr, "\n");
+        fprintf  (stderr, "*** Contexterror ***              \n");
+        vfprintf (stderr, format, args);
+        fprintf  (stderr, "\n");
+        fflush   (stderr);
+}
+
+static void ctx_status_func(GPContext *context,
+	const char *format,
+	va_list args,
+	void *data) {
+        vfprintf (stderr, format, args);
+        fprintf  (stderr, "\n");
+        fflush   (stderr);
 }
