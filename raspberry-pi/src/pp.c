@@ -48,6 +48,9 @@ enum ReceiveCodes {NANR = 0, AR = 1, ANR = 2, CAP = 3, ERR = 4};
 GPContext *context;
 Camera *camera;
 
+// flag for child process
+bool child = false;
+
 // prototypes
 static void ctx_error_func (GPContext *context,
 	const char *format,
@@ -271,15 +274,20 @@ void cleanFbi() {
 	if (pid >= 0) {
 		// fork was successful
 		if (pid == 0) {
-			// child - kill fbi processes by command name
-			int err = execl("/usr/bin/killall", "killall", "/usr/bin/fbi");
+			// child
+			child = true;
+
+			// kill fbi processes by command name
+			int err = execl("/usr/bin/killall", "killall", "/usr/bin/fbi", (char *) NULL);
 
 			if (err < 0) {
-				printf("Failed to terminate fbi processes\n");
+				printf("Failed to terminate fbi processes: %d\n", err);
 				exit(-1);
 			}
 		} else {
-			// parent - wait for second child to kill fbi processes (sends SIGTERM)
+			// parent
+			
+			// wait for second child to kill fbi processes (sends SIGTERM)
 			if (pid != waitpid(pid, killStatus, 0)) {
 				printf("Error during image viewer termination process\n");
 				exit(-1);
@@ -299,7 +307,10 @@ void bufferImage() {
 	if (pid >= 0) {
 		// fork was successful
 		if (pid == 0) {
-			// child - start fbi image viewer
+			// child
+			child = true;
+			
+			// start fbi image viewer
 			int err = execl("/usr/bin/fbi",
 			"fbi",
 			"-T",
@@ -308,7 +319,8 @@ void bufferImage() {
 			"/dev/fb0",
 			"-noverbose",
 			"-a",
-			CURRENT_IMAGE);
+			CURRENT_IMAGE,
+			(char *) NULL);
 
 			if (err < 0) {
 				printf("Failed to start image viewer\n");
@@ -323,12 +335,13 @@ void bufferImage() {
 }
 
 void cleanup() {
-	
-	printf("\nCleaning up residual fbi processes and releasing resources...\n");
-	cleanFbi();
-	gp_camera_exit(camera, context);
-	gp_camera_unref(camera);
-	printf("Done\n");
+	if (!child) {
+		printf("\nCleaning up residual fbi processes and releasing resources...\n");
+		cleanFbi();
+		gp_camera_exit(camera, context);
+		gp_camera_unref(camera);
+		printf("Done\n");
+	}
 }
 
 void handleSIGINT(int sig) {
