@@ -3,6 +3,8 @@
 This project combines a Raspberry Pi and Arduino Uno, along with necessary peripherals, to form a compact
 system capable of performing user-initiated image capture and presentation, such as would be typical in a "photo-booth" machine.
 
+Check out our [short photo blog](https://github.com/agnash/peoples-pixel/wiki/Blog).
+
 # Dependencies
 libgphoto2
 
