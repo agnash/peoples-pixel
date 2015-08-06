@@ -6,7 +6,7 @@ system capable of performing user-initiated image capture and presentation, such
 Check out our [short photo blog](https://github.com/agnash/peoples-pixel/wiki/Blog).
 
 # Platform Compatibility
-The software here is only expected to run on Raspberry-Pis (running Raspbian Wheezy) and Arduino microcontrollers. Do not expect code within the Raspberry-Pi directory to run or even compile on other linux computers without extra configuration. The Raspberry-Pi code has been tested on the Model A+, B+, and the Version 2 Model B. The Arduino code has been tested on the Uno Rev 3 and the Mega 2560.
+The software here is only expected to run on Raspberry-Pis (running Raspbian Wheezy) and Arduino microcontrollers. Do not expect code within the raspberry-pi directory to run or even compile on other linux computers without extra configuration. The Raspberry-Pi code has been tested on the Model A+, B+, and the Version 2 Model B. The Arduino code has been tested on the Uno Rev 3 and the Mega 2560.
 
 # Dependencies
 (installation instructions included below)
