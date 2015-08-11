@@ -1,4 +1,8 @@
 # The People's Pixel
+This source file is licensed under the terms of the "GPL (v2)" license.
+Please see the file LICENSE.md included in this distribution for licensing
+terms.
+
 
 This project combines a Raspberry Pi and Arduino Uno, along with necessary peripherals, to form a compact
 system capable of performing user-initiated image capture and presentation, such as would be typical in a "photo-booth" machine.
