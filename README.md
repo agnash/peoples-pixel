@@ -1,7 +1,7 @@
 Aaron Nash, Dominic Schira, James Cuadros. Copyright (c) 2015. This file is licensed under the terms of the "GPL (v2)" license.
 Please see the file LICENSE.md included in this distribution for licensing terms.
 
-Please see the profile pages for [Aaron Nash](https://github.com/agnash) and [Dominic Schira](https://github.com/domshyra) and [James Cuadros](https://github.com/jamescuadros) for contact information.
+Contact and contributing information is at the bottom of this readme file.
 
 # The People's Pixel
 
@@ -55,7 +55,6 @@ Digital camera from the following list: http://www.gphoto.org/proj/libgphoto2/su
 
 
 # Set up Raspberry Pi
-
 After [installing](https://www.raspberrypi.org/documentation/installation/installing-images/README.md) Raspbian Wheezy ...
 
 1: Run the command:
@@ -121,7 +120,12 @@ $ pp
 (the actual program...will fail unless camera and Arduino is properly configured, powered on and connected)
 
 # Set up Arduino
+Follow these steps to setup the Arduino microcontroller...
 
 1: [Download and install](https://www.arduino.cc/en/main/software) the Arduino IDE
-
 <AARON ADD ARDUINO STUFF HERE>
+
+# Contact and Contributing
+Please see the profile pages for [Aaron Nash](https://github.com/agnash) and [Dominic Schira](https://github.com/domshyra) and [James Cuadros](https://github.com/jamescuadros) for contact information.
+
+See the issues section for current issue tracking. If you'd like to contribute first fork your own copy of the repository. After commiting the feature branch containing your changes to your own repository create a pull request targeting this one. If approved, all changes should go into the integration branch.
