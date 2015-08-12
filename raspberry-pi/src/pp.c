@@ -145,6 +145,9 @@ int main(int argc, char **argv) {
 		}
 	}
 	
+	// delay the button for a few seconds
+	sleep(SLEEP_TIME);
+	
 	// main controller loop
 	printf("Entering main loop\n");
 	while (1) {
