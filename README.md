@@ -77,8 +77,10 @@ and select advanced options. Then select the option for enabling i2c hardware at
 4: Run the command:
 
 ``` $ sudo nano /etc/modprobe.d/raspi-blacklist.conf ```
+
 'i2c-bcm2708' shouldn't be blacklisted so make sure that line is commented out. i.e.
 ``` #blacklist i2c-bcm2708 ```
+
 Save the file if changed and exit nano. (If the file is empty then just move on)
 
 
