@@ -1,5 +1,4 @@
-Aaron Nash, Dominic Schira, James Cuadros. Copyright (c) 2015. This file is licensed under the terms of the "GPL (v2)" license.
-Please see the file LICENSE.md included in this distribution for licensing terms.
+Copyright (c) 2015, Aaron Nash, Dominic Schira, and James Cuadros. This file is licensed under the terms of the "GPL (v2)" license. Please see the file LICENSE.md included in this distribution for licensing terms.
 
 Contact and contributing information is at the bottom of this readme file.
 
