@@ -1,4 +1,8 @@
-In Progress Parts List to Build a Prototype Photo Booth
+Aaron Nash. Copyright (c) 2015. This file is licensed under the terms of the "GPL (v2)" license. Please see the file LICENSE.md included in this distribution for licensing terms.
+
+-------------------------------------------------------------------------------------------------------------------
+
+These are some of the parts used to build the initial prototype of the photo booth:
 
 ~$40 - Raspberry Pi (Model A+, B+, or Version 2 Model B)
 
