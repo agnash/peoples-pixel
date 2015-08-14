@@ -54,6 +54,24 @@ Female to female or female to male jumper cable pack
 
 Digital camera from the following list: http://www.gphoto.org/proj/libgphoto2/support.php
 
+# Set up the Arduino
+Follow these steps to setup the Arduino microcontroller...
+
+1: [Download and install](https://www.arduino.cc/en/main/software) the Arduino IDE onto a compatible computer (i.e. PC/Mac/Linux but not the Raspberry-Pi).
+
+2: Clone this repository onto that computer
+
+``` $ git clone https://github.com/agnash/peoples-pixel.git ```
+
+3: Connect your Arduino microcontroller to the computer's USB port and start up the Arduino IDE
+
+4: From the top menu bar select Tools -> Boards and select the model Arduino board you are using
+
+5: From the top menu bar select Tools -> Ports and select the USB port that the Arduino is connected to
+
+6: Use [these instructions](https://www.arduino.cc/en/Guide/Libraries) to install the seven segment display library provided with People's Pixel. The directory to add is arduino/libraries/SegmentDisplay from within the project directory you cloned in step 2.
+
+7: Also open the file arduino/booth_controller/booth_controller.ino in the IDE. Use the upload button to load the software onto the Arduino board.
 
 # Set up Raspberry Pi
 After [installing](https://www.raspberrypi.org/documentation/installation/installing-images/README.md) Raspbian Wheezy ...
@@ -110,7 +128,12 @@ if they're not already there. Save the file if changed and exit nano.
 10: Clone the peoples-pixel repo:
 
 ```$ cd ~ ```
+
 ```$ git clone https://github.com/agnash/peoples-pixel.git```
+
+#Final Installation and Configuration
+
+#Updating
 
 11: Run...
 ```
@@ -119,12 +142,6 @@ $ sudo ./setup.bash
 $ pp 
 ```
 (the actual program...will fail unless camera and Arduino is properly configured, powered on and connected)
-
-# Set up Arduino
-Follow these steps to setup the Arduino microcontroller...
-
-1: [Download and install](https://www.arduino.cc/en/main/software) the Arduino IDE
-<AARON ADD ARDUINO STUFF HERE>
 
 # Contact and Contributing
 Please see the profile pages for [Aaron Nash](https://github.com/agnash) and [Dominic Schira](https://github.com/domshyra) and [James Cuadros](https://github.com/jamescuadros) for contact information.
