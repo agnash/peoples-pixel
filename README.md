@@ -73,7 +73,7 @@ Follow these steps to setup the Arduino microcontroller...
 
 7: Also open the file arduino/booth_controller/booth_controller.ino in the IDE. Use the upload button to load the software onto the Arduino board.
 
-# Set up Raspberry Pi
+# Set up the Raspberry Pi
 After [installing](https://www.raspberrypi.org/documentation/installation/installing-images/README.md) Raspbian Wheezy ...
 
 1: Run the command:
@@ -132,16 +132,48 @@ if they're not already there. Save the file if changed and exit nano.
 ```$ git clone https://github.com/agnash/peoples-pixel.git```
 
 #Final Installation and Configuration
+(the following assumes you cloned the project into your home directory as demonstrated above)
+
+1: Run the following commands
+```
+$ cd ~/peoples-pixel/raspberry-pi
+$ sudo ./setup.bash
+```
+2: ***Optional:*** If you'd like the welcome splash to appear upon startup then run the command ```$ nano ~/.bashrc``` and add the line
+```export PP_HOME=/home/<your user name>/peoples-pixel```
+
+Save and exit the file.
+
+You can make the welcome image anything you'd like, as long as it's called welcome.png and is located in the raspberry-pi directory in the main project directory.
+
+3: ***Optional:*** If you'd like People's Pixel to startup automatically when you boot up the Raspberry Pi then run the command ```$ sudo nano /etc/rc.local``` and add the following lines to the script:
+```
+export PP_HOME=/home/<your user name>/peoples-pixel
+sudo -E pp
+```
+
+(The first line will enable the welcome image to be shown if you plan on using it)
+Save and exit the file.
+
+4: The program can now manually be started by running the command:
+
+```$ sudo pp```
+
+The program will fail unless the camera and Arduino are properly configured, powered on and connected. The wiki contains the [wiring diagram](https://github.com/agnash/peoples-pixel/wiki/Example-Wiring-Diagram).
 
 #Updating
+(the following assumes you cloned the project into your home directory)
 
-11: Run...
+1: Run the commands:
 ```
-$ cd peoples-pixel/raspberry-pi
+$ cd ~/peoples-pixel
+$ git checkout master
+$ git pull
+$ cd raspberry-pi
 $ sudo ./setup.bash
-$ pp 
 ```
-(the actual program...will fail unless camera and Arduino is properly configured, powered on and connected)
+
+If updates include changes to code running on the Arduino, these will be pointed out in corresponding release notes. Specific instructions will be outlined there.
 
 # Contact and Contributing
 Please see the profile pages for [Aaron Nash](https://github.com/agnash) and [Dominic Schira](https://github.com/domshyra) and [James Cuadros](https://github.com/jamescuadros) for contact information.
