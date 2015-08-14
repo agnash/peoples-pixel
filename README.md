@@ -20,11 +20,13 @@ Please see LICENSE.md for the warrantly disclaimer.
 The software here is only expected to run on the Raspberry-Pi (running Raspbian Wheezy) and Arduino microcontroller. Do not expect code within the raspberry-pi directory to run or even compile on other linux computers without extra configuration. The Raspberry-Pi code has been tested on the Model A+, B+, and the Version 2 Model B. The arduino code has been tested on the Arduino Uno Rev 3 and the Arduino Mega 2560 models.
 
 # Dependencies
+Credit is given to the authors of the following open source softwares on which this software currently depends. These softwares were not modified in any way, only used.
+
+[libgphoto2](http://http://www.gphoto.org/proj/libgphoto2/) (v3, LGPL)
+
+[Linux frame buffer application(FBI)](https://www.kraxel.org/cgit/fbida/) (v2, GPL)
+
 (installation instructions included below)
-
-libgphoto2
-
-Linux frame buffer application(FBI)
 
 # Parts List
 
