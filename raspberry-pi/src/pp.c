@@ -20,11 +20,15 @@
 #include <fcntl.h>
 #include <stdarg.h>
 #include <unistd.h>
+#include <stdbool.h>
 #include <gphoto2/gphoto2-camera.h>
 #include <gphoto2/gphoto2-context.h>
 
 // specify the device name of the i2c bus
 static const char *DEVICE = "/dev/i2c-1";
+
+// path of the welcome image
+static const char *WELCOME = "/raspberry-pi/welcome.png";
 
 // the name given to whatever image was last fetched from camera
 static const char *CURRENT_IMAGE = "current_image";
@@ -60,11 +64,11 @@ static void ctx_status_func (GPContext *context,
 	const char *format,
 	va_list args,
 	void *data);
-void communicate(const int& msg, const int& file);
-void proceedOnResponse(const int& expected, const time_t& timeout, const int& file);
+void communicate(const int msg, const int file);
+void proceedOnResponse(const int expected, const time_t timeout, const int file);
 void takePicture(GPContext *context, Camera *camera, const char *filename);
 void cleanFbi();
-void bufferImage();
+void bufferImage(const char *imagePath);
 void cleanup();
 void handleSIGINT(int sig);
 
@@ -123,7 +127,27 @@ int main(int argc, char **argv) {
 	communicate(RESET, file);
 	proceedOnResponse(NANR, STANDARD_TIMEOUT, file);
 	printf("Microcontroller reset\n");
-
+	
+	// build path of welcome image and render it
+	char *ppPath = getenv("PP_HOME");
+	if (ppPath == NULL) {
+		printf("Skipping welcome image - pp home directory is not set\n");
+	} else {
+		char *welcome = malloc(strlen(ppPath) + strlen(WELCOME) + 1);
+		if (welcome == NULL) {
+			printf("Skipping welcome image - can't resolve path\n");
+		} else {
+			strcpy(welcome, ppPath);
+			strcat(welcome, WELCOME);
+			printf("Loading splash: %s\n", welcome);
+			bufferImage(welcome);
+			free(welcome);
+		}
+	}
+	
+	// delay the button for a few seconds
+	sleep(SLEEP_TIME);
+	
 	// main controller loop
 	printf("Entering main loop\n");
 	while (1) {
@@ -150,7 +174,7 @@ int main(int argc, char **argv) {
 		// clean up any previous fbi processes
 		cleanFbi();
 		// load the new image
-		bufferImage();
+		bufferImage(CURRENT_IMAGE);
 
 		// parent - give first child time to buffer image to screen
 		printf("Pi sleeping for %d seconds...\n", SLEEP_TIME);
@@ -161,7 +185,7 @@ int main(int argc, char **argv) {
 	}
 }
 
-void communicate(const int& msg, const int& file) {
+void communicate(const int msg, const int file) {
 	
 	unsigned char command[16];
 	
@@ -175,7 +199,7 @@ void communicate(const int& msg, const int& file) {
 	}
 }
 
-void proceedOnResponse(const int& expected, const time_t& timeout, const int& file) {
+void proceedOnResponse(const int expected, const time_t timeout, const int file) {
 	
 	unsigned char response[1];
 	
@@ -268,7 +292,7 @@ void takePicture(GPContext *context, Camera *camera, const char *filename) {
 
 void cleanFbi() {
 	// fork child process
-	int* killStatus;
+	int killStatus;
 	int pid = fork();
 
 	if (pid >= 0) {
@@ -287,9 +311,9 @@ void cleanFbi() {
 		} else {
 			// parent
 			
-			// wait for second child to kill fbi processes (sends SIGTERM)
-			if (pid != waitpid(pid, killStatus, 0)) {
-				printf("Error during image viewer termination process\n");
+			// wait for child to kill fbi processes (sends SIGTERM)
+			if (pid != waitpid(pid, &killStatus, 0)) {
+				printf("Error in fbi cleaning process\n");
 				exit(-1);
 			}
 		}
@@ -300,7 +324,7 @@ void cleanFbi() {
 	}
 }
 
-void bufferImage() {
+void bufferImage(const char *imagePath) {
 	// fork child process
 	int pid = fork();
 
@@ -319,7 +343,7 @@ void bufferImage() {
 			"/dev/fb0",
 			"-noverbose",
 			"-a",
-			CURRENT_IMAGE,
+			imagePath,
 			(char *) NULL);
 
 			if (err < 0) {
